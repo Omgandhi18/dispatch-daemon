@@ -22,8 +22,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var tokenMenuItem: NSMenuItem?
     private let server = WebSocketServer()
-    private let tracker = WindowTracker()
-    private let commander = WindowCommander()
+    private let ptyManager = PTYManager()
     private var authenticatedConnections: Set<ObjectIdentifier> = []
     private var cancellables = Set<AnyCancellable>()
 
@@ -42,26 +41,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupDaemonState()
         setupMenuBar()
         setupPipeline()
-        tracker.onPermissionDenied = {
-            DispatchQueue.main.async {
-                let alert = NSAlert()
-                alert.messageText = "Accessibility Access Required"
-                alert.informativeText = "Dispatch needs Accessibility access to track and control your terminal windows. Please enable it in System Settings → Privacy & Security → Accessibility."
-                alert.addButton(withTitle: "Open Settings")
-                alert.addButton(withTitle: "Later")
-                if alert.runModal() == .alertFirstButtonReturn {
-                    let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
-                    NSWorkspace.shared.open(url)
-                }
-            }
-        }
-        tracker.start()
         server.start()
         print("[Dispatch] Daemon started. Pairing token: \(pairingToken)")
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        tracker.stop()
         server.stop()
     }
 
@@ -69,7 +53,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         DaemonState.shared.isRunning = true
         DaemonState.shared.pairingToken = pairingToken
 
-        // Observe client changes to update icon
         DaemonState.shared.$authenticatedClients
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.updateMenuBarIcon() }
@@ -81,7 +64,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         updateMenuBarIcon()
         statusItem?.button?.toolTip = "Dispatch - Click to open"
 
-        // Left-click opens window
         if let button = statusItem?.button {
             button.action = #selector(openMainWindow)
             button.target = self
@@ -92,7 +74,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         tokenItem.isEnabled = false
         tokenMenuItem = tokenItem
 
-        // Right-click menu
         let menu = NSMenu()
         menu.addItem(NSMenuItem(title: "Open Dispatch", action: #selector(openMainWindow), keyEquivalent: "o"))
         menu.addItem(.separator())
@@ -154,24 +135,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.terminate(nil)
     }
 
-    private func setupPipeline() {
-        let screenSize = WindowTracker.mainScreenSize
+    // MARK: - PTY + WebSocket Pipeline
 
-        tracker.onInitialState = { [weak self] windows in
+    private func setupPipeline() {
+        ptyManager.onOutput = { [weak self] sessionID, data in
             guard let self else { return }
+            let frame = BinaryFrame.encode(sessionID: sessionID, data: data)
             let authenticated = self.connectionsByID(self.authenticatedConnections)
             for conn in authenticated {
-                self.server.send(.handshake(screenW: Double(screenSize.width), screenH: Double(screenSize.height)), to: conn)
-                self.server.send(.state(windows), to: conn)
+                self.server.sendBinary(frame, to: conn)
             }
         }
 
-        tracker.onDelta = { [weak self] changed, removed in
+        ptyManager.onExit = { [weak self] sessionID, exitCode in
             guard let self else { return }
             let authenticated = self.connectionsByID(self.authenticatedConnections)
             for conn in authenticated {
-                self.server.send(.delta(changed: changed, removed: removed), to: conn)
+                self.server.send(.sessionExited(id: sessionID, exitCode: exitCode), to: conn)
             }
+            DaemonState.shared.activeSessions = self.ptyManager.activeSessionIDs.count
         }
 
         server.onClientConnected = { [weak self] _ in
@@ -195,11 +177,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     self.authenticatedConnections.insert(connID)
                     self.server.send(.authResult(success: true), to: connection)
                     DaemonState.shared.authenticatedClients = self.authenticatedConnections.count
-                    DispatchQueue.main.async {
-                        let screenSize = WindowTracker.mainScreenSize
-                        self.server.send(.handshake(screenW: Double(screenSize.width), screenH: Double(screenSize.height)), to: connection)
-                        self.server.send(.state(self.tracker.currentWindows), to: connection)
-                    }
+
+                    let sessions = self.ptyManager.activeSessionIDs.map { SessionState(id: $0) }
+                    self.server.send(.sessionsList(sessions), to: connection)
                 } else {
                     self.server.send(.authResult(success: false), to: connection)
                 }
@@ -208,8 +188,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
             guard self.authenticatedConnections.contains(connID) else { return }
 
-            DispatchQueue.main.async {
-                self.commander.execute(message)
+            switch message {
+            case .createSession(let id, let rows, let cols):
+                let success = self.ptyManager.createSession(id: id, rows: UInt16(rows), cols: UInt16(cols))
+                if success {
+                    self.server.send(.sessionCreated(id: id), to: connection)
+                    DaemonState.shared.activeSessions = self.ptyManager.activeSessionIDs.count
+                }
+            case .resizeSession(let id, let rows, let cols):
+                self.ptyManager.resize(sessionID: id, rows: UInt16(rows), cols: UInt16(cols))
+            case .closeSession(let id):
+                self.ptyManager.close(sessionID: id)
+                DaemonState.shared.activeSessions = self.ptyManager.activeSessionIDs.count
+            default:
+                break
+            }
+        }
+
+        server.onBinaryData = { [weak self] data, connection in
+            guard let self, self.authenticatedConnections.contains(ObjectIdentifier(connection)) else { return }
+            if let (sessionID, ptyData) = BinaryFrame.decode(data) {
+                self.ptyManager.write(sessionID: sessionID, data: ptyData)
             }
         }
     }

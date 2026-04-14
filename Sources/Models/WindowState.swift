@@ -1,130 +1,116 @@
 import Foundation
 
-// MARK: - Window Status
+// MARK: - Session State (replaces WindowState)
 
-enum WindowStatus: String, Codable {
-    case running
-    case idle
-    case finished
-}
-
-// MARK: - Window State
-
-struct WindowState: Codable, Equatable {
+struct SessionState: Codable, Equatable, Identifiable {
     let id: String
     var title: String
-    var status: WindowStatus
-    var x: Double
-    var y: Double
-    var w: Double
-    var h: Double
-    var isFocused: Bool
-    var content: String?
-    var zOrder: Int
+    var rows: UInt16
+    var cols: UInt16
 
-    static func == (lhs: WindowState, rhs: WindowState) -> Bool {
-        lhs.id == rhs.id &&
-        lhs.title == rhs.title &&
-        lhs.status == rhs.status &&
-        lhs.x == rhs.x &&
-        lhs.y == rhs.y &&
-        lhs.w == rhs.w &&
-        lhs.h == rhs.h &&
-        lhs.isFocused == rhs.isFocused &&
-        lhs.content == rhs.content &&
-        lhs.zOrder == rhs.zOrder
+    init(id: String, title: String = "Terminal", rows: UInt16 = 24, cols: UInt16 = 80) {
+        self.id = id
+        self.title = title
+        self.rows = rows
+        self.cols = cols
     }
 }
 
-// MARK: - Outbound Messages (Mac → Phone)
+// MARK: - Binary Frame Header
+
+enum FrameType: UInt8 {
+    case control = 0x01
+    case ptyData = 0x02
+}
+
+struct BinaryFrame {
+    static func encode(sessionID: String, data: Data) -> Data {
+        var result = Data([FrameType.ptyData.rawValue])
+        let idData = sessionID.data(using: .utf8) ?? Data()
+        result.append(UInt8(idData.count))
+        result.append(idData)
+        result.append(data)
+        return result
+    }
+
+    static func decode(_ frame: Data) -> (sessionID: String, data: Data)? {
+        guard frame.count >= 2, frame[0] == FrameType.ptyData.rawValue else { return nil }
+        let idLength = Int(frame[1])
+        guard frame.count >= 2 + idLength else { return nil }
+        let sessionID = String(data: frame[2..<(2 + idLength)], encoding: .utf8) ?? ""
+        let ptyData = frame[(2 + idLength)...]
+        return (sessionID, Data(ptyData))
+    }
+}
+
+// MARK: - Outbound Messages (Daemon → Client, JSON text frames)
 
 enum OutboundMessage {
-    case handshake(screenW: Double, screenH: Double)
-    case state([WindowState])
-    case delta(changed: [WindowState], removed: [String])
     case authResult(success: Bool)
+    case sessionCreated(id: String)
+    case sessionExited(id: String, exitCode: Int32)
+    case sessionsList([SessionState])
 
     func toJSON() -> String? {
-        let encoder = JSONEncoder()
         switch self {
-        case .handshake(let w, let h):
-            let payload: [String: Any] = ["type": "handshake", "screenW": w, "screenH": h]
-            return payload.toJSONString()
-        case .state(let windows):
-            guard let data = try? encoder.encode(windows),
-                  let arr = String(data: data, encoding: .utf8) else { return nil }
-            return #"{"type":"state","windows":\#(arr)}"#
-        case .delta(let changed, let removed):
-            guard let changedData = try? encoder.encode(changed),
-                  let removedData = try? encoder.encode(removed),
-                  let changedStr = String(data: changedData, encoding: .utf8),
-                  let removedStr = String(data: removedData, encoding: .utf8) else { return nil }
-            return #"{"type":"delta","changed":\#(changedStr),"removed":\#(removedStr)}"#
         case .authResult(let success):
-            let payload: [String: Any] = ["type": "authResult", "success": success]
-            return payload.toJSONString()
+            return Self.encode(["type": "authResult", "success": success])
+        case .sessionCreated(let id):
+            return Self.encode(["type": "sessionCreated", "id": id])
+        case .sessionExited(let id, let exitCode):
+            return Self.encode(["type": "sessionExited", "id": id, "exitCode": Int(exitCode)])
+        case .sessionsList(let sessions):
+            guard let data = try? JSONEncoder().encode(sessions),
+                  let str = String(data: data, encoding: .utf8) else { return nil }
+            return #"{"type":"sessionsList","sessions":\#(str)}"#
         }
+    }
+
+    private static func encode(_ dict: [String: Any]) -> String? {
+        guard let data = try? JSONSerialization.data(withJSONObject: dict) else { return nil }
+        return String(data: data, encoding: .utf8)
     }
 }
 
-// MARK: - Inbound Messages (Phone → Mac)
+// MARK: - Inbound Messages (Client → Daemon, JSON text frames)
 
 enum InboundMessage: Decodable {
-    case focus(id: String)
-    case move(id: String, x: Double, y: Double)
-    case resize(id: String, w: Double, h: Double)
-    case type_(id: String, text: String)
-    case close(id: String)
-    case openNew
     case auth(token: String)
+    case createSession(id: String, rows: Int, cols: Int)
+    case resizeSession(id: String, rows: Int, cols: Int)
+    case closeSession(id: String)
 
     private enum CodingKeys: String, CodingKey {
-        case type, id, x, y, w, h, text, token
+        case type, id, token, rows, cols
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        let type_ = try container.decode(String.self, forKey: .type)
-        if type_ == "openNew" {
-            self = .openNew
-            return
-        }
-        if type_ == "auth" {
+        let type = try container.decode(String.self, forKey: .type)
+        switch type {
+        case "auth":
             let token = try container.decode(String.self, forKey: .token)
             self = .auth(token: token)
-            return
-        }
-        let id = try container.decode(String.self, forKey: .id)
-        switch type_ {
-        case "focus":
-            self = .focus(id: id)
-        case "move":
-            let x = try container.decode(Double.self, forKey: .x)
-            let y = try container.decode(Double.self, forKey: .y)
-            self = .move(id: id, x: x, y: y)
-        case "resize":
-            let w = try container.decode(Double.self, forKey: .w)
-            let h = try container.decode(Double.self, forKey: .h)
-            self = .resize(id: id, w: w, h: h)
-        case "type":
-            let text = try container.decode(String.self, forKey: .text)
-            self = .type_(id: id, text: text)
-        case "close":
-            self = .close(id: id)
+        case "createSession":
+            let id = try container.decode(String.self, forKey: .id)
+            let rows = try container.decode(Int.self, forKey: .rows)
+            let cols = try container.decode(Int.self, forKey: .cols)
+            self = .createSession(id: id, rows: rows, cols: cols)
+        case "resizeSession":
+            let id = try container.decode(String.self, forKey: .id)
+            let rows = try container.decode(Int.self, forKey: .rows)
+            let cols = try container.decode(Int.self, forKey: .cols)
+            self = .resizeSession(id: id, rows: rows, cols: cols)
+        case "closeSession":
+            let id = try container.decode(String.self, forKey: .id)
+            self = .closeSession(id: id)
         default:
-            throw DecodingError.dataCorruptedError(forKey: .type, in: container, debugDescription: "Unknown type: \(type_)")
+            throw DecodingError.dataCorruptedError(forKey: .type, in: container, debugDescription: "Unknown type: \(type)")
         }
     }
 
     static func from(jsonString: String) -> InboundMessage? {
         guard let data = jsonString.data(using: .utf8) else { return nil }
         return try? JSONDecoder().decode(InboundMessage.self, from: data)
-    }
-}
-
-private extension Dictionary where Key == String, Value == Any {
-    func toJSONString() -> String? {
-        guard let data = try? JSONSerialization.data(withJSONObject: self) else { return nil }
-        return String(data: data, encoding: .utf8)
     }
 }

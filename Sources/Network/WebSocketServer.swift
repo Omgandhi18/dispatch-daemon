@@ -4,6 +4,7 @@ import Network
 final class WebSocketServer {
 
     var onMessage: ((InboundMessage, NWConnection) -> Void)?
+    var onBinaryData: ((Data, NWConnection) -> Void)?
     var onClientConnected: ((NWConnection) -> Void)?
     var onClientDisconnected: ((NWConnection) -> Void)?
 
@@ -53,6 +54,8 @@ final class WebSocketServer {
         connections.removeAll()
     }
 
+    // MARK: - Text Messages
+
     func broadcast(_ message: OutboundMessage) {
         guard let json = message.toJSON(), let data = json.data(using: .utf8) else { return }
         let metadata = NWProtocolWebSocket.Metadata(opcode: .text)
@@ -68,6 +71,22 @@ final class WebSocketServer {
         let context = NWConnection.ContentContext(identifier: "text", metadata: [metadata])
         connection.send(content: data, contentContext: context, isComplete: true, completion: .idempotent)
     }
+
+    // MARK: - Binary Messages
+
+    func sendBinary(_ data: Data, to connection: NWConnection) {
+        let metadata = NWProtocolWebSocket.Metadata(opcode: .binary)
+        let context = NWConnection.ContentContext(identifier: "binary", metadata: [metadata])
+        connection.send(content: data, contentContext: context, isComplete: true, completion: .idempotent)
+    }
+
+    func sendBinary(_ data: Data) {
+        for connection in connections.values {
+            sendBinary(data, to: connection)
+        }
+    }
+
+    // MARK: - Connection Lifecycle
 
     private func accept(connection: NWConnection) {
         let id = ObjectIdentifier(connection)
@@ -102,10 +121,20 @@ final class WebSocketServer {
         connection.receiveMessage { [weak self] data, context, _, error in
             defer { self?.receive(from: connection) }
             if let error = error { print("[WebSocketServer] Receive error: \(error)"); return }
-            guard let data = data,
-                  let json = String(data: data, encoding: .utf8),
-                  let message = InboundMessage.from(jsonString: json) else { return }
-            self?.onMessage?(message, connection)
+            guard let data = data else { return }
+
+            let isBinary = context?.protocolMetadata
+                .compactMap { $0 as? NWProtocolWebSocket.Metadata }
+                .first?.opcode == .binary
+
+            if isBinary {
+                self?.onBinaryData?(data, connection)
+            } else {
+                if let json = String(data: data, encoding: .utf8),
+                   let message = InboundMessage.from(jsonString: json) {
+                    self?.onMessage?(message, connection)
+                }
+            }
         }
     }
 }

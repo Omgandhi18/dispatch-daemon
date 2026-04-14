@@ -11,11 +11,9 @@
 		3C94B8ACCB71834BC08F1193 /* StatusPopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A80694A6527757051378E60 /* StatusPopoverView.swift */; };
 		57C6B52706EA84BC3C21C677 /* DaemonState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F4C28F0D59D789AD4893FAA /* DaemonState.swift */; };
 		6DF78B3656C7EB859E1F8192 /* DispatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E11A06C2F785B6B7EC1D5330 /* DispatchApp.swift */; };
-		78BA998E312E9E9D9F804768 /* WindowCommander.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA86D94342387E14CE609D66 /* WindowCommander.swift */; };
 		98A361CF3B5E14767658A9D8 /* WindowState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D6AF5814C0BF643A1E9B4FA /* WindowState.swift */; };
 		AABB1111DDDD2222CCCC3333 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8F55E4CD2F6FB30600180C5F /* Assets.xcassets */; };
-		B1BBF172372376F251ED73A1 /* PollingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED1D135150CF2FC6D646C8FA /* PollingController.swift */; };
-		BEE4DE2B1B22349B26846EA0 /* WindowTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62780FDBEA757BC0D046037F /* WindowTracker.swift */; };
+		AA11PTYMGR00000000001 /* PTYManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF11PTYMGR00000000001 /* PTYManager.swift */; };
 		C40FAE1F0C9429B4106EBDB6 /* WebSocketServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 929495E671F0B50B514463AC /* WebSocketServer.swift */; };
 		E0A7CD712DBE90995C879BBA /* MainWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7CD096EAB7C9BF5FE8F9501 /* MainWindow.swift */; };
 /* End PBXBuildFile section */
@@ -24,26 +22,22 @@
 		0A80694A6527757051378E60 /* StatusPopoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusPopoverView.swift; sourceTree = "<group>"; };
 		5D6AF5814C0BF643A1E9B4FA /* WindowState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowState.swift; sourceTree = "<group>"; };
 		5F94E80B13451A7E6D82983F /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
-		62780FDBEA757BC0D046037F /* WindowTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowTracker.swift; sourceTree = "<group>"; };
 		80C02AF760CA8A82DC3C4921 /* dispatch-daemon.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "dispatch-daemon.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		8F55E4CD2F6FB30600180C5F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		929495E671F0B50B514463AC /* WebSocketServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocketServer.swift; sourceTree = "<group>"; };
 		9F4C28F0D59D789AD4893FAA /* DaemonState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaemonState.swift; sourceTree = "<group>"; };
-		CA86D94342387E14CE609D66 /* WindowCommander.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowCommander.swift; sourceTree = "<group>"; };
 		D7CD096EAB7C9BF5FE8F9501 /* MainWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindow.swift; sourceTree = "<group>"; };
 		E11A06C2F785B6B7EC1D5330 /* DispatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DispatchApp.swift; sourceTree = "<group>"; };
-		ED1D135150CF2FC6D646C8FA /* PollingController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollingController.swift; sourceTree = "<group>"; };
+		FF11PTYMGR00000000001 /* PTYManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PTYManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
-		0011F0F99F4ECE472C9C5743 /* Accessibility */ = {
+		0011F0F99F4ECE472C9C5743 /* PTY */ = {
 			isa = PBXGroup;
 			children = (
-				ED1D135150CF2FC6D646C8FA /* PollingController.swift */,
-				CA86D94342387E14CE609D66 /* WindowCommander.swift */,
-				62780FDBEA757BC0D046037F /* WindowTracker.swift */,
+				FF11PTYMGR00000000001 /* PTYManager.swift */,
 			);
-			path = Accessibility;
+			path = PTY;
 			sourceTree = "<group>";
 		};
 		0D31A77223932E0E44B0774D /* Models */ = {
@@ -184,12 +178,10 @@
 				29A3D69BD082BF122DD23998 /* DashboardView.swift in Sources */,
 				6DF78B3656C7EB859E1F8192 /* DispatchApp.swift in Sources */,
 				E0A7CD712DBE90995C879BBA /* MainWindow.swift in Sources */,
-				B1BBF172372376F251ED73A1 /* PollingController.swift in Sources */,
+				AA11PTYMGR00000000001 /* PTYManager.swift in Sources */,
 				3C94B8ACCB71834BC08F1193 /* StatusPopoverView.swift in Sources */,
 				C40FAE1F0C9429B4106EBDB6 /* WebSocketServer.swift in Sources */,
-				78BA998E312E9E9D9F804768 /* WindowCommander.swift in Sources */,
 				98A361CF3B5E14767658A9D8 /* WindowState.swift in Sources */,
-				BEE4DE2B1B22349B26846EA0 /* WindowTracker.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

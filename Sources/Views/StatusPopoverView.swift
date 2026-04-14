@@ -20,8 +20,8 @@ struct StatusPopoverView: View {
                     Text("CLIENTS").font(.system(size: 8, design: .monospaced)).foregroundColor(.secondary)
                 }
                 VStack(spacing: 2) {
-                    Text("\(state.trackedWindowCount)").font(.system(size: 16, weight: .bold, design: .monospaced))
-                    Text("WINDOWS").font(.system(size: 8, design: .monospaced)).foregroundColor(.secondary)
+                    Text("\(state.activeSessions)").font(.system(size: 16, weight: .bold, design: .monospaced))
+                    Text("SESSIONS").font(.system(size: 8, design: .monospaced)).foregroundColor(.secondary)
                 }
             }
         }

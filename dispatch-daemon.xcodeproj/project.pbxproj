@@ -13,6 +13,7 @@
 		6DF78B3656C7EB859E1F8192 /* DispatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E11A06C2F785B6B7EC1D5330 /* DispatchApp.swift */; };
 		78BA998E312E9E9D9F804768 /* WindowCommander.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA86D94342387E14CE609D66 /* WindowCommander.swift */; };
 		98A361CF3B5E14767658A9D8 /* WindowState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D6AF5814C0BF643A1E9B4FA /* WindowState.swift */; };
+		AABB1111DDDD2222CCCC3333 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8F55E4CD2F6FB30600180C5F /* Assets.xcassets */; };
 		B1BBF172372376F251ED73A1 /* PollingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED1D135150CF2FC6D646C8FA /* PollingController.swift */; };
 		BEE4DE2B1B22349B26846EA0 /* WindowTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62780FDBEA757BC0D046037F /* WindowTracker.swift */; };
 		C40FAE1F0C9429B4106EBDB6 /* WebSocketServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 929495E671F0B50B514463AC /* WebSocketServer.swift */; };
@@ -116,6 +117,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 4B75FDCEA12A6B308DC93395 /* Build configuration list for PBXNativeTarget "dispatch-daemon" */;
 			buildPhases = (
+				DDDD0000AAAA1111BBBB2222 /* Resources */,
 				F9338C952F0618CCABDD4B29 /* Sources */,
 			);
 			buildRules = (
@@ -161,6 +163,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		DDDD0000AAAA1111BBBB2222 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AABB1111DDDD2222CCCC3333 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		F9338C952F0618CCABDD4B29 /* Sources */ = {

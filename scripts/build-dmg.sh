@@ -66,12 +66,22 @@ fi
 # ─── 3. Create DMG ───────────────────────────────────────────────────────────
 echo "▶ Creating DMG..."
 rm -f "$DMG_PATH"
+
+DMG_STAGING="$BUILD_DIR/dmg_staging"
+rm -rf "$DMG_STAGING"
+mkdir -p "$DMG_STAGING"
+
+cp -R "$APP_PATH" "$DMG_STAGING/"
+ln -s /Applications "$DMG_STAGING/Applications"
+
 hdiutil create \
   -volname "$VOLUME_NAME" \
-  -srcfolder "$APP_PATH" \
+  -srcfolder "$DMG_STAGING" \
   -ov \
   -format UDZO \
   "$DMG_PATH"
+
+rm -rf "$DMG_STAGING"
 
 # ─── 4. Sign DMG ─────────────────────────────────────────────────────────────
 echo "▶ Signing DMG..."
@@ -92,5 +102,8 @@ xcrun notarytool submit "$DMG_PATH" \
 echo "▶ Stapling..."
 xcrun stapler staple "$DMG_PATH"
 
+FINAL_DMG="$HOME/Documents/dispatch-daemon.dmg"
+cp -f "$DMG_PATH" "$FINAL_DMG"
+
 echo ""
-echo "✅ Done: $DMG_PATH"
+echo "✅ Done: $FINAL_DMG"

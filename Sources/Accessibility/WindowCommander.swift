@@ -44,6 +44,16 @@ final class WindowCommander {
                 self.runAppleScript(#"tell application "System Events" to keystroke "c" using {control down}"#)
             } else if text == "\u{1B}" {
                 self.runAppleScript(#"tell application "System Events" to key code 53"#)
+            } else if text == "\u{1B}[A" {
+                self.runAppleScript(#"tell application "System Events" to key code 126"#)
+            } else if text == "\u{1B}[B" {
+                self.runAppleScript(#"tell application "System Events" to key code 125"#)
+            } else if text == "\u{1B}[C" {
+                self.runAppleScript(#"tell application "System Events" to key code 124"#)
+            } else if text == "\u{1B}[D" {
+                self.runAppleScript(#"tell application "System Events" to key code 123"#)
+            } else if text == "\t" {
+                self.runAppleScript(#"tell application "System Events" to key code 48"#)
             } else {
                 self.typeViaAppleScript(text: text)
             }
@@ -99,7 +109,12 @@ final class WindowCommander {
     }
 
     private func openNewTerminal() {
-        let src = "tell application \"Terminal\" to do script \"\""
+        let src = """
+        tell application "Terminal"
+            activate
+            do script ""
+        end tell
+        """
         if let script = NSAppleScript(source: src) {
             var err: NSDictionary?
             script.executeAndReturnError(&err)
